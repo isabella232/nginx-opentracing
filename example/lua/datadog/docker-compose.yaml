@@ -1,0 +1,31 @@
+version: '2'
+services:
+
+  nginx:
+    privileged: true
+    image: opentracing/openresty
+    networks:
+      openresty_example:
+        aliases:
+          - nginx
+    volumes:
+      - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+      - ./dd-config.json:/etc/dd-config.json
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+
+  datadog-agent:
+    image: datadog/agent:6.5.2
+    environment:
+      - DD_API_KEY
+      - DD_APM_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+    networks:
+      openresty_example:
+        aliases:
+          - dd-agent
+
+networks:
+  openresty_example: {}

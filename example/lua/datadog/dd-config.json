@@ -1,0 +1,5 @@
+{
+  "agent_host": "dd-agent",
+  "service": "nginx",
+  "operation_name_override": "nginx.proxy"
+}
