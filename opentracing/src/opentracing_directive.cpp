@@ -125,7 +125,8 @@ char *propagate_opentracing_context(ngx_conf_t *cf, ngx_command_t * /*command*/,
   auto main_conf = static_cast<opentracing_main_conf_t *>(
       ngx_http_conf_get_module_main_conf(cf, ngx_http_opentracing_module));
   if (main_conf->span_context_keys == nullptr) {
-    ngx_log_error(NGX_LOG_ERR, cf->log, 0, "opentracing_propagate_context no keys");
+    ngx_log_error(NGX_LOG_ERR, cf->log, 0,
+                  "opentracing_propagate_context no keys");
     return static_cast<char *>(NGX_CONF_OK);
   }
   auto keys = static_cast<opentracing::string_view *>(
@@ -244,7 +245,7 @@ char *propagate_grpc_opentracing_context(ngx_conf_t *cf, ngx_command_t *command,
 // set_opentracing_enabled
 //------------------------------------------------------------------------------
 char *set_opentracing_enabled(ngx_conf_t *cf, ngx_command_t *command,
-                          void *conf) noexcept {
+                              void *conf) noexcept {
   ngx_log_error(NGX_LOG_ERR, cf->log, 0, "set_opentracing_enabled entrypoint");
   auto rcode = ngx_conf_set_flag_slot(cf, command, conf);
   if (rcode != NGX_OK) {
@@ -254,12 +255,12 @@ char *set_opentracing_enabled(ngx_conf_t *cf, ngx_command_t *command,
       ngx_http_conf_get_module_main_conf(cf, ngx_http_opentracing_module));
   if (main_conf == nullptr) {
     ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-      "set_opentracing_enabled: no main config");
+                  "set_opentracing_enabled: no main config");
     return static_cast<char *>(NGX_CONF_ERROR);
   }
   main_conf->span_context_keys = discover_span_context_keys(cf->pool, cf->log);
-  ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-      "set_opentracing_enabled: %d", main_conf->span_context_keys->nelts);
+  ngx_log_error(NGX_LOG_ERR, cf->log, 0, "set_opentracing_enabled: %d",
+                main_conf->span_context_keys->nelts);
   return static_cast<char *>(NGX_CONF_OK);
 }
 

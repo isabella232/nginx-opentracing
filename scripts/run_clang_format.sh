@@ -1,3 +1,2 @@
 #!/bin/sh
-find . -path ./example/node_modules -prune -o \( -name '*.h' -or -name '*.cpp' \) \
-  -exec clang-format -i {} \;
+find opentracing/ \( -name '*.h' -or -name '*.cpp' \) -exec clang-format-9 -i {} \;

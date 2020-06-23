@@ -1,9 +1,9 @@
 #include "discover_span_context_keys.h"
 #include "load_tracer.h"
 
+#include <datadog/opentracing.h>
 #include <opentracing/ext/tags.h>
 #include <opentracing/propagation.h>
-#include <datadog/opentracing.h>
 #include <algorithm>
 #include <iostream>
 #include <new>
@@ -66,9 +66,11 @@ ngx_array_t* discover_span_context_keys(ngx_pool_t* pool, ngx_log_t* log) {
     return nullptr;
   }
   if (keys.empty()) {
-    ngx_log_error(NGX_LOG_ERR, log, 0, "discover_span_context_keys has empty result");
+    ngx_log_error(NGX_LOG_ERR, log, 0,
+                  "discover_span_context_keys has empty result");
   } else {
-    ngx_log_error(NGX_LOG_ERR, log, 0, "discover_span_context_keys result: %d", keys.size());
+    ngx_log_error(NGX_LOG_ERR, log, 0, "discover_span_context_keys result: %d",
+                  keys.size());
     for (auto& key : keys) {
       ngx_log_error(NGX_LOG_ERR, log, 0, "  %s", key);
     }
