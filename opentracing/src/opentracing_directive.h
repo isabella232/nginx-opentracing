@@ -34,6 +34,12 @@ char *add_opentracing_tag(ngx_conf_t *cf, ngx_array_t *tags, ngx_str_t key,
                           ngx_str_t value) noexcept;
 
 //------------------------------------------------------------------------------
+// set_opentracing_enabled
+//------------------------------------------------------------------------------
+char *set_opentracing_enabled(ngx_conf_t *cf, ngx_command_t *command,
+                          void *conf) noexcept;
+
+//------------------------------------------------------------------------------
 // set_opentracing_tag
 //------------------------------------------------------------------------------
 char *set_opentracing_tag(ngx_conf_t *cf, ngx_command_t *command,

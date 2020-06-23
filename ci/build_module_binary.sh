@@ -4,8 +4,13 @@ set -e
 
 pushd "${BUILD_DIR}"
 NGINX_VERSION=$1
-wget -O nginx-release-${NGINX_VERSION}.tar.gz https://github.com/nginx/nginx/archive/release-${NGINX_VERSION}.tar.gz
-tar zxf nginx-release-$NGINX_VERSION.tar.gz
+if [[ ! "$SRC_DIR" ]]; then
+	SRC_DIR=$(git rev-parse --show-toplevel)
+fi
+if [[ ! -d "nginx-release-$NGINX_VERSION" ]]; then
+	wget -c -O nginx-release-${NGINX_VERSION}.tar.gz https://github.com/nginx/nginx/archive/release-${NGINX_VERSION}.tar.gz
+	tar zxf nginx-release-$NGINX_VERSION.tar.gz
+fi
 cd nginx-release-$NGINX_VERSION
 
 # Set up an export map so that symbols from the opentracing module don't
@@ -17,10 +22,14 @@ cat <<EOF > export.map
   local: *;
 };
 EOF
-
-./auto/configure \
-      --with-compat \
-      --add-dynamic-module="${SRC_DIR}"/opentracing
+if [[ ! -f .configured ]]; then
+	./auto/configure \
+		--with-compat \
+		--add-dynamic-module="${SRC_DIR}"/opentracing \
+		--with-cc-opt="-I$SRC_DIR/deps/include" \
+		--with-ld-opt="-L$SRC_DIR/deps/lib"
+	touch .configured
+fi
 make modules
 
 # Statically linking won't work correctly unless g++ is used instead of gcc, and
@@ -31,11 +40,14 @@ make modules
   objs/addon/src/*.o \
   objs/ngx_http_opentracing_module_modules.o \
   -static-libstdc++ -static-libgcc \
+  -L$SRC_DIR/deps/lib \
+  -ldd_opentracing \
   -lopentracing \
+  -lcurl \
   -Wl,--version-script="${PWD}/export.map" \
   -shared
 
-TARGET_NAME=linux-amd64-nginx-${NGINX_VERSION}-ngx_http_module.so.tgz
-tar czf ${TARGET_NAME} ngx_http_opentracing_module.so
-cp ${TARGET_NAME} "${MODULE_DIR}"/
+TARGET_NAME="linux-amd64-nginx-${NGINX_VERSION}-ngx_http_module.so.tgz"
+tar czf "${TARGET_NAME}" ngx_http_opentracing_module.so
+cp "${TARGET_NAME}" "$SRC_DIR/modules/"
 popd

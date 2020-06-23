@@ -1,0 +1,27 @@
+version: "3.2"
+services:
+  traced-nginx:
+    image: nginx:1.17.3
+    ports:
+      - "8999:80"
+    volumes:
+      - './nginx.conf:/etc/nginx/nginx.conf:ro'
+      - './nginx-release-1.17.3/ngx_http_opentracing_module.so:/etc/nginx/modules/ngx_http_opentracing_module.so:ro'
+    environment:
+      - DD_AGENT_HOST=dd-agent
+  dd-agent:
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - '/proc/:/host/proc/:ro'
+      - '/sys/fs/cgroup/:/host/sys/fs/cgroup:ro'
+    environment:
+      - DD_API_KEY
+      - 'DD_APM_ENABLED=true'
+    image: 'datadog/agent'
+  backend:
+    image: nginx:1.17.3
+    volumes:
+      - './nginx.conf.backend:/etc/nginx/nginx.conf:ro'
+      - './nginx-release-1.17.3/ngx_http_opentracing_module.so:/etc/nginx/modules/ngx_http_opentracing_module.so:ro'
+    environment:
+      - DD_AGENT_HOST=dd-agent

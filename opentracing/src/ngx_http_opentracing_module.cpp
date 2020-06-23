@@ -5,7 +5,7 @@
 #include "opentracing_variable.h"
 #include "utility.h"
 
-#include <opentracing/dynamic_load.h>
+#include <datadog/opentracing.h>
 
 #include <cstdlib>
 #include <exception>
@@ -32,17 +32,6 @@ static char *merge_opentracing_loc_conf(ngx_conf_t *, void *parent, void *child)
 
 using namespace ngx_opentracing;
 
-// When OpenTracing is used with Lua, some of the objects generated (e.g. spans, etc) may not
-// be finalized until after opentracing_exit_worker is called. If we dlclose, the tracing library
-// there, then we can segfault if those destructors invoke code that has been unloaded. See
-// https://github.com/opentracing/lua-bridge-tracer/issues/6
-//
-// As a solution, we use a plain pointer and never free and instead rely on the OS to clean up the
-// resources when the process exits. This is a pattern proposed on 
-// https://google.github.io/styleguide/cppguide.html#Static_and_Global_Variables
-static const opentracing::DynamicTracingLibraryHandle*
-    opentracing_library_handle;
-
 //------------------------------------------------------------------------------
 // kDefaultOpentracingTags
 //------------------------------------------------------------------------------
@@ -61,9 +50,16 @@ const std::pair<ngx_str_t, ngx_str_t> default_opentracing_tags[] = {
 //------------------------------------------------------------------------------
 static ngx_command_t opentracing_commands[] = {
 
-    { ngx_string("opentracing"),
+    { ngx_string("opentracing_original"),
       NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
       ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(opentracing_loc_conf_t, enable),
+      nullptr},
+
+    { ngx_string("opentracing"),
+      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
+      set_opentracing_enabled,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(opentracing_loc_conf_t, enable),
       nullptr},
@@ -205,23 +201,18 @@ static ngx_int_t opentracing_module_init(ngx_conf_t *cf) noexcept {
 // opentracing_init_worker
 //------------------------------------------------------------------------------
 static ngx_int_t opentracing_init_worker(ngx_cycle_t *cycle) noexcept try {
+  ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "init worker");
   auto main_conf = static_cast<opentracing_main_conf_t *>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_opentracing_module));
-  if (!main_conf || !main_conf->tracer_library.data) {
+  if (!main_conf) {
     return NGX_OK;
   }
 
-  std::unique_ptr<opentracing::DynamicTracingLibraryHandle> handle{
-      new opentracing::DynamicTracingLibraryHandle{}};
-  std::shared_ptr<opentracing::Tracer> tracer;
-  auto result = ngx_opentracing::load_tracer(
-      cycle->log, to_string(main_conf->tracer_library).data(),
-      to_string(main_conf->tracer_conf_file).data(), *handle, tracer);
-  if (result != NGX_OK) {
-    return result;
-  }
+  datadog::opentracing::TracerOptions options;
+  options.service = "traced-nginx";
+  auto tracer = datadog::opentracing::makeTracer(options);
+  ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "tracer initialized: %p", tracer);
 
-  opentracing_library_handle = handle.release();
   opentracing::Tracer::InitGlobal(std::move(tracer));
   return NGX_OK;
 } catch (const std::exception &e) {

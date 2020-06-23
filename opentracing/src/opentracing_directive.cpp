@@ -124,12 +124,8 @@ char *propagate_opentracing_context(ngx_conf_t *cf, ngx_command_t * /*command*/,
                                     void * /*conf*/) noexcept try {
   auto main_conf = static_cast<opentracing_main_conf_t *>(
       ngx_http_conf_get_module_main_conf(cf, ngx_http_opentracing_module));
-  if (!main_conf->tracer_library.data) {
-    ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-                  "opentracing_propagate_context before tracer loaded");
-    return static_cast<char *>(NGX_CONF_ERROR);
-  }
   if (main_conf->span_context_keys == nullptr) {
+    ngx_log_error(NGX_LOG_ERR, cf->log, 0, "opentracing_propagate_context no keys");
     return static_cast<char *>(NGX_CONF_OK);
   }
   auto keys = static_cast<opentracing::string_view *>(
@@ -171,11 +167,6 @@ char *propagate_fastcgi_opentracing_context(ngx_conf_t *cf,
                                             void *conf) noexcept try {
   auto main_conf = static_cast<opentracing_main_conf_t *>(
       ngx_http_conf_get_module_main_conf(cf, ngx_http_opentracing_module));
-  if (!main_conf->tracer_library.data) {
-    ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-                  "opentracing_fastcgi_propagate_context before tracer loaded");
-    return static_cast<char *>(NGX_CONF_ERROR);
-  }
   if (main_conf->span_context_keys == nullptr) {
     return static_cast<char *>(NGX_CONF_OK);
   }
@@ -215,11 +206,6 @@ char *propagate_grpc_opentracing_context(ngx_conf_t *cf, ngx_command_t *command,
                                          void *conf) noexcept try {
   auto main_conf = static_cast<opentracing_main_conf_t *>(
       ngx_http_conf_get_module_main_conf(cf, ngx_http_opentracing_module));
-  if (!main_conf->tracer_library.data) {
-    ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-                  "opentracing_grpc_propagate_context before tracer loaded");
-    return static_cast<char *>(NGX_CONF_ERROR);
-  }
   if (main_conf->span_context_keys == nullptr) {
     return static_cast<char *>(NGX_CONF_OK);
   }
@@ -252,6 +238,29 @@ char *propagate_grpc_opentracing_context(ngx_conf_t *cf, ngx_command_t *command,
   ngx_log_error(NGX_LOG_ERR, cf->log, 0,
                 "opentracing_grpc_propagate_context failed: %s", e.what());
   return static_cast<char *>(NGX_CONF_ERROR);
+}
+
+//------------------------------------------------------------------------------
+// set_opentracing_enabled
+//------------------------------------------------------------------------------
+char *set_opentracing_enabled(ngx_conf_t *cf, ngx_command_t *command,
+                          void *conf) noexcept {
+  ngx_log_error(NGX_LOG_ERR, cf->log, 0, "set_opentracing_enabled entrypoint");
+  auto rcode = ngx_conf_set_flag_slot(cf, command, conf);
+  if (rcode != NGX_OK) {
+    return static_cast<char *>(NGX_CONF_ERROR);
+  }
+  auto main_conf = static_cast<opentracing_main_conf_t *>(
+      ngx_http_conf_get_module_main_conf(cf, ngx_http_opentracing_module));
+  if (main_conf == nullptr) {
+    ngx_log_error(NGX_LOG_ERR, cf->log, 0,
+      "set_opentracing_enabled: no main config");
+    return static_cast<char *>(NGX_CONF_ERROR);
+  }
+  main_conf->span_context_keys = discover_span_context_keys(cf->pool, cf->log);
+  ngx_log_error(NGX_LOG_ERR, cf->log, 0,
+      "set_opentracing_enabled: %d", main_conf->span_context_keys->nelts);
+  return static_cast<char *>(NGX_CONF_OK);
 }
 
 //------------------------------------------------------------------------------
@@ -292,9 +301,6 @@ char *set_tracer(ngx_conf_t *cf, ngx_command_t *command,
                  void *conf) noexcept try {
   auto main_conf = static_cast<opentracing_main_conf_t *>(
       ngx_http_conf_get_module_main_conf(cf, ngx_http_opentracing_module));
-  auto values = static_cast<ngx_str_t *>(cf->args->elts);
-  main_conf->tracer_library = values[1];
-  main_conf->tracer_conf_file = values[2];
 
   // In order for span context propagation to work, the keys used by a tracer
   // need to be known ahead of time. OpenTracing-C++ doesn't currently have any
@@ -302,9 +308,7 @@ char *set_tracer(ngx_conf_t *cf, ngx_command_t *command,
   // span context.
   //
   // See also propagate_opentracing_context.
-  main_conf->span_context_keys = discover_span_context_keys(
-      cf->pool, cf->log, to_string(main_conf->tracer_library).c_str(),
-      to_string(main_conf->tracer_conf_file).c_str());
+  main_conf->span_context_keys = discover_span_context_keys(cf->pool, cf->log);
   if (main_conf->span_context_keys == nullptr) {
     return static_cast<char *>(NGX_CONF_ERROR);
   }

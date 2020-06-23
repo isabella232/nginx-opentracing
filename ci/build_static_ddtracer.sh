@@ -4,21 +4,22 @@ set -e
 install_dir="$(git rev-parse --show-toplevel)/deps"
 
 pushd "${BUILD_DIR}"
-if [[ ! -d "opentracing-cpp" ]]; then
-	git clone https://github.com/opentracing/opentracing-cpp.git
+if [[ ! -d "dd-opentracing-cpp" ]]; then
+	git clone https://github.com/DataDog/dd-opentracing-cpp.git
 fi
-cd opentracing-cpp
-git checkout "v1.5.1"
+cd dd-opentracing-cpp
+git checkout "v1.1.4"
 if [[ ! -d .build ]]; then
 	mkdir .build
 fi
 cd .build
-cmake -DCMAKE_BUILD_TYPE=Release \
+cmake -DCMAKE_PREFIX_PATH="$install_dir" \
       -DCMAKE_INSTALL_PREFIX="$install_dir" \
+      -DDEPS_PATH="$install_dir" \
       -DCMAKE_CXX_FLAGS="-fPIC" \
-      -DBUILD_SHARED_LIBS=OFF \
+      -DBUILD_STATIC=ON \
+      -DBUILD_SHARED=OFF \
       -DBUILD_TESTING=OFF \
-      -DBUILD_MOCKTRACER=OFF \
       ..
 make && make install
 popd

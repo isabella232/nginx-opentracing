@@ -27,3 +27,13 @@
 *.exe
 *.out
 *.app
+
+# Locally built dependencies
+deps/
+# Locally built modules
+modules/
+
+# Downloaded clutter
+nginx-release-*
+dd-opentracing-cpp/
+opentracing-cpp/
