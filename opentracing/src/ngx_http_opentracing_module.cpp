@@ -180,7 +180,13 @@ static ngx_int_t opentracing_module_init(ngx_conf_t *cf) noexcept {
   auto handler = static_cast<ngx_http_handler_pt *>(ngx_array_push(
       &core_main_config->phases[NGX_HTTP_REWRITE_PHASE].handlers));
   if (handler == nullptr) return NGX_ERROR;
-  *handler = on_enter_block;
+  // Make sure the handler is first in the list - shuffle existing handlers forward.
+  auto handlers = core_main_config->phases[NGX_HTTP_REWRITE_PHASE].handlers;
+  auto elts = static_cast<ngx_http_handler_pt *>(handlers.elts);
+  for (int i = handlers.nelts - 1; i > 0; i--) {
+    elts[i] = elts[i-1];
+  }
+  elts[0] = on_enter_block;
 
   handler = static_cast<ngx_http_handler_pt *>(
       ngx_array_push(&core_main_config->phases[NGX_HTTP_LOG_PHASE].handlers));
