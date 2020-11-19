@@ -183,7 +183,9 @@ static ngx_int_t opentracing_module_init(ngx_conf_t *cf) noexcept {
   // Make sure the handler is first in the list - shuffle existing handlers forward.
   auto handlers = core_main_config->phases[NGX_HTTP_REWRITE_PHASE].handlers;
   auto elts = static_cast<ngx_http_handler_pt *>(handlers.elts);
+  ngx_log_error(NGX_LOG_ERR, cf->log, 0, "initializing opentracing module. %d rewrite handlers", handlers.nelts);
   for (int i = handlers.nelts - 1; i > 0; i--) {
+    ngx_log_error(NGX_LOG_ERR, cf->log, 0, "shifting %d -> %d", i-1, i);
     elts[i] = elts[i-1];
   }
   elts[0] = on_enter_block;
