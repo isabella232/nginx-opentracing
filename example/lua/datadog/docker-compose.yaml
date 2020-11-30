@@ -1,0 +1,33 @@
+version: '2'
+services:
+
+  nginx:
+    image: opentracing/openresty
+    networks:
+      openresty_example:
+        aliases:
+          - nginx
+    volumes:
+      - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+      - ./dd-config.json:/etc/nginx/dd-config.json
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+  dd-agent:
+    image: datadog/agent:7
+    networks:
+      openresty_example: {}
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - '/proc/:/host/proc/:ro'
+      - '/sys/fs/cgroup/:/host/sys/fs/cgroup:ro'
+    environment:
+      - DD_API_KEY
+      - DD_APM_ENABLED=true
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_AC_EXCLUDE=name:datadog-agent
+
+networks:
+  openresty_example: {}
